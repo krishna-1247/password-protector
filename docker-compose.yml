@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://frontend:3000"]'
+      MAX_UPLOAD_MB: "500"
+      MAX_WORKERS: "4"
+      JOB_TTL_MINUTES: "30"
+      CLEANUP_INTERVAL_SECONDS: "300"
+      TMP_ROOT: "/tmp/pdf-jobs"
+    volumes:
+      - /tmp/pdf-jobs:/tmp/pdf-jobs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:8000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  default:
+    name: pdf-protector-network

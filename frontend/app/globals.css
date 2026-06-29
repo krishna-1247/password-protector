@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-jetbrains: 'JetBrains Mono', Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-surface text-[#111827] font-sans antialiased;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { @apply bg-surface; }
+::-webkit-scrollbar-thumb { @apply bg-brand-200 rounded-full border-2 border-surface; }
+::-webkit-scrollbar-thumb:hover { @apply bg-brand-400; }
+
+/* Custom Neumorphic Card / Class mapping */
+.glass {
+  @apply bg-white border border-[#F1F5F9] shadow-neo-raised;
+}
+
+/* Shimmer skeleton */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(99, 102, 241, 0.08) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Drag-over highlight */
+.drag-active {
+  @apply border-brand-500 bg-brand-500/[0.03];
+  box-shadow: 0 0 0 1px theme('colors.brand.500'), inset 4px 4px 10px #d5deeb, inset -4px -4px 10px #ffffff;
+}
+
+/* Custom focus ring */
+*:focus-visible {
+  outline: 2px solid theme('colors.brand.500');
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Progress bar track */
+.progress-track {
+  @apply bg-surface-input rounded-full overflow-hidden shadow-neo-inset;
+}
+
+.progress-fill {
+  @apply bg-brand-gradient rounded-full transition-all duration-500 ease-out;
+}
+
+/* Status badge */
+.badge {
+  @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-neo-raised-sm bg-white;
+}
+
+.badge-pending    { @apply text-slate-500 border border-slate-100; }
+.badge-processing { @apply text-brand-600 border border-brand-100; }
+.badge-completed  { @apply text-success-600 border border-success-100; }
+.badge-failed     { @apply text-red-600 border border-red-100; }
