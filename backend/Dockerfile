@@ -23,5 +23,5 @@ USER appuser
 
 EXPOSE 8000
 
-# Uvicorn with single worker (use Railway's horizontal scaling instead)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Uvicorn with single worker (reads Railway's PORT env variable or defaults to 8000)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
