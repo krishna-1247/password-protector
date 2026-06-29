@@ -42,14 +42,19 @@ _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="enc-worker")
 _ALLOWED_PDF_EXT = {".pdf"}
 _ALLOWED_EXCEL_EXT = {".xlsx", ".xls", ".csv"}
 
-# Filename sanitiser — keep only safe characters
-_SAFE_NAME = re.compile(r"[^\w.\-]")
+from src.logger import get_logger
+
+logger = get_logger(__name__)
+
+# Filename sanitiser — keep spaces, dots, hyphens, underscores, parentheses, brackets, and pluses
+_SAFE_NAME = re.compile(r"[^\w\s.\-()\[\]+]")
 
 
 def _sanitise(name: str) -> str:
     """Strip unsafe characters from an uploaded filename."""
     name = Path(name).name  # prevent path traversal
-    return _SAFE_NAME.sub("_", name)
+    name = _SAFE_NAME.sub("_", name)
+    return name.strip()
 
 
 def _validate_size(file: UploadFile, max_bytes: int) -> None:
@@ -111,14 +116,17 @@ async def upload_files(
     job = job_store.create(job_id, tmp_dir)
 
     # ── Save uploads ────────────────────────────────────────────────────
+    logger.info("Upload endpoint: starting file saving for job %s", job_id)
     safe_excel_name = _sanitise(excel.filename or "mapping.xlsx")
     excel_path = tmp_dir / safe_excel_name
+    logger.info("Saving Excel mapping file: '%s' -> '%s'", excel.filename, safe_excel_name)
     content = await excel.read()
     excel_path.write_bytes(content)
 
     saved_pdfs: list[str] = []
     for pdf in pdfs:
         safe_name = _sanitise(pdf.filename or "file.pdf")
+        logger.info("Saving uploaded PDF: '%s' -> '%s'", pdf.filename, safe_name)
         dest = uploads_dir / safe_name
         content = await pdf.read()
         dest.write_bytes(content)

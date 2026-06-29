@@ -68,6 +68,38 @@ class PdfEncryptor:
         self._overwrite = overwrite
         self._progress_callback = progress_callback
 
+        # Build dictionary of uploaded PDFs keyed by normalized filename
+        self._uploaded_files: dict[str, str] = {}
+        if self._input_dir.exists() and self._input_dir.is_dir():
+            for p in self._input_dir.iterdir():
+                if p.is_file():
+                    norm_name = self.normalize_filename(p.name)
+                    self._uploaded_files[norm_name] = p.name
+            logger.info(
+                "PdfEncryptor initialized. Normalized file mappings: %s",
+                self._uploaded_files,
+            )
+
+    @staticmethod
+    def normalize_filename(filename: str) -> str:
+        """Normalize a PDF filename for comparison."""
+        import unicodedata
+        import re
+        name = str(filename).strip()
+        # replace backslashes with forward slashes
+        name = name.replace('\\', '/')
+        # take basename
+        name = Path(name).name
+        # Unicode normalization
+        name = unicodedata.normalize('NFC', name)
+        # case-insensitive
+        name = name.lower()
+        if not name.endswith('.pdf'):
+            name += '.pdf'
+        # normalize whitespace/separators (multiple spaces, underscores, pluses, hyphens to a single space)
+        name = re.sub(r'[\s_\-+]+', ' ', name).strip()
+        return name
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -93,7 +125,35 @@ class PdfEncryptor:
             self._progress_callback(filename)
 
         t_start = time.perf_counter()
-        result = self._do_encrypt(filename, password)
+
+        norm_req = self.normalize_filename(filename)
+        actual_name = self._uploaded_files.get(norm_req)
+
+        if not actual_name:
+            # Match failed! Log closest matching filenames
+            import difflib
+            close_matches = difflib.get_close_matches(
+                norm_req,
+                list(self._uploaded_files.keys()),
+                n=3,
+                cutoff=0.4
+            )
+            close_real_names = [self._uploaded_files[m] for m in close_matches]
+            logger.warning(
+                "Missing file lookup failed for Excel row '%s' (Normalized: '%s'). Uploaded files: %s. Closest matches: %s",
+                filename,
+                norm_req,
+                list(self._uploaded_files.values()),
+                close_real_names,
+            )
+            result = ProcessingResult(
+                filename,
+                "missing",
+                f"Not found in input directory. Closest matches: {', '.join(close_real_names) if close_real_names else 'None'}"
+            )
+        else:
+            result = self._do_encrypt(actual_name, password)
+
         result.elapsed_ms = (time.perf_counter() - t_start) * 1000
         return result
 

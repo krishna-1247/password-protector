@@ -18,6 +18,9 @@ from src.excel_reader import ExcelReader
 from src.pdf_encryptor import PdfEncryptor
 from src.processor import BatchProcessor
 from src.utils import ProcessingResult, RunSummary, Timer
+from src.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def run_encryption_job(
@@ -65,6 +68,20 @@ def run_encryption_job(
         total = len(excel_result.valid_rows)
         job.total = total
 
+        # Log Excel rows
+        logger.info("Excel read completed. Filenames parsed from mapping spreadsheet:")
+        for r in excel_result.valid_rows:
+            logger.info("  - Row %d: '%s'", r.row_index, r.filename)
+
+        # Log upload folder contents
+        uploaded_files = list(job.input_dir.iterdir()) if job.input_dir.exists() else []
+        logger.info(
+            "Upload directory contents for job %s: %s (Total uploaded PDFs: %d)",
+            job.job_id,
+            [f.name for f in uploaded_files],
+            len(uploaded_files),
+        )
+
         # ── 2. Run encryption ──────────────────────────────────────────
         encryptor = PdfEncryptor(
             input_dir=job.input_dir,
@@ -84,6 +101,20 @@ def run_encryption_job(
             )
 
         # ── 3. Build summary ───────────────────────────────────────────
+        # Calculate statistics
+        matched_count = sum(1 for r in raw_results if r.status == "success")
+        missing_count = sum(1 for r in raw_results if r.status == "missing")
+        failed_count = sum(1 for r in raw_results if r.status == "failed")
+        skipped_count = sum(1 for r in raw_results if r.status == "skipped")
+        logger.info(
+            "Job %s processing finished. Statistics: Total Excel rows=%d, Matched=%d, Missing=%d, Failed=%d, Skipped=%d",
+            job.job_id,
+            total,
+            matched_count,
+            missing_count,
+            failed_count,
+            skipped_count,
+        )
         summary = RunSummary(total=total, elapsed_sec=t.elapsed)
         file_results: list[FileResult] = []
         for r in raw_results:
